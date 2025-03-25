@@ -14,20 +14,25 @@ let timeoutDuration = 2000;
 } )();
 var timeoutObj = {};
 
-function randomReload() {
-	const timeout = Math.random() * 30 * 1000;
+function randomReload(locationToGo = null, sleepFactor = 15) {
+	const timeout = Math.random() * sleepFactor * 1000;
 	clearTimeout(timeoutObj);
-	console.log(`Sleeping for ${timeout} as we couldn't build`);
-	timeoutObj = setTimeout(() => location.reload(), timeout);//location.reload()
+	console.log(`Sleeping for ${timeout} as we couldn't build ${locationToGo}`);
+	timeoutObj = setTimeout(() => locationToGo ? location.href = locationToGo : location.reload(), timeout);//location.reload()
 }
 
 function initUI() {
 	const currentTab = getCurrentTab();
 	const queue = getQueue();
 	if (queue.length && getShouldRun()) {
-		buildFromQueue();
-		randomReload();
+		const success = buildFromQueue();
+		if (!success) {
+			const nextIndex = getIndex() + 1;
+			setIndex(nextIndex);
+			randomReload(null, 20);
+		}
 	}
+
 	let producers = document.querySelectorAll(`#${currentTab} > #technologies ul > li`);
 
 	for (let i = 0; i < producers.length; i++) {
@@ -57,7 +62,7 @@ function initUI() {
 		button.addEventListener('click', function () {
 			const planet = getPlanet();
 			let currentUri = location.href;
-			if(!currentUri.includes('cp=')){
+			if (!currentUri.includes('cp=')) {
 				currentUri = `${currentUri}&cp=${planet}`;
 			}
 			addToQueue({ selector: queryClass, label: label, uri: currentUri });
@@ -110,10 +115,20 @@ function getPlanet() {
 
 function buildFromQueue() {
 	const queue = getQueue();
-	const toBuild = queue.shift();
+	const index = getIndex();
+	const toBuild = queue[index] ?? null;
+	if (!toBuild) {
+		console.log("Can't find index to build, resetting it");
+		setIndex(0);
+		randomReload(null, 10);
+		return true;
+	}
 
-	if (toBuild.uri && (location.href !== toBuild.uri)) {
-		location.href = toBuild.uri;
+	console.log(`Trying to build index ${index}`);
+
+	if (toBuild.uri && ( location.href !== toBuild.uri )) {
+		randomReload(toBuild.uri, 5)
+		return true;
 	}
 
 	const el = document.querySelector(toBuild.selector);
@@ -126,6 +141,10 @@ function buildFromQueue() {
 		console.log('Cannot find the upgrade btn');
 		return false;
 	}
+
+	queue[index] = null;
+	updateQueue(queue);
+
 	upgradeBtn.click();
 
 	localStorage.setItem(getQName(), JSON.stringify(queue.filter(x => x)));
@@ -161,6 +180,15 @@ function updateQueue(queue) {
 
 function getQName() {
 	return `the-queue`;
+}
+
+function setIndex(index = 0) {
+	localStorage.setItem('queue-index', index.toString());
+}
+
+function getIndex() {
+	let index = localStorage.getItem('queue-index') ?? "0";
+	return parseInt(index);
 }
 
 function getQueue() {
