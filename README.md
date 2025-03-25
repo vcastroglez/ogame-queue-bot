@@ -8,3 +8,4 @@ Queue bot that help you queue buildings and research in all your planets.
 - Add btn to remove instead of clicking in it
 - Add btn to try now an element from the queue
 - Add btn to move up and down element of the queue
+- Add btn to flush the queue
